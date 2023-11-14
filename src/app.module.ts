@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './app.service';
 import { UserController } from './user/user.controller';
 import { UserService } from './user/user.service';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './db/prisma.service';
 
 @Module({
   imports: [
