@@ -3,9 +3,8 @@ import { AppController } from './app.controller';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './app.service';
-import { UserController } from './user/user.controller';
-import { UserService } from './user/user.service';
 import { PrismaService } from './db/prisma.service';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -20,8 +19,9 @@ import { PrismaService } from './db/prisma.service';
       autoLoadEntities: true,
       synchronize: true,
     }),
+    UserModule,
   ],
-  controllers: [AppController, UserController],
-  providers: [AppService, UserService, PrismaService],
+  controllers: [AppController],
+  providers: [AppService, PrismaService],
 })
 export class AppModule {}

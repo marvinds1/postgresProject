@@ -16,4 +16,43 @@ export class UserService {
       },
     });
   }
+
+  async createUser(data) {
+    return this.prisma.user.create({
+      data: {
+        email: data.email,
+        name: data.name,
+        password: data.password,
+      },
+    });
+  }
+
+  async updateUser(id, data) {
+    return this.prisma.user.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  }
+
+  async deleteUser(id) {
+    return this.prisma.user.delete({
+      where: {
+        id,
+      },
+    });
+  }
+
+  async deleteAll() {
+    return this.prisma.user.deleteMany();
+  }
+
+  async getUserByEmail(email) {
+    return this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+    });
+  }
 }
