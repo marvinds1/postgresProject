@@ -1,58 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../db/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { PaginationQueryDto } from './dto/pagination-query.dto';
+
+const BCRYPT_ROUNDS = 12;
+
+export const publicUserSelect = { id: true, email: true, name: true } as const;
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async getUsers() {
-    return this.prisma.user.findMany();
-  }
-  async getUser(Id) {
-    const id = parseInt(Id);
-    return this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+  getUsers({ skip, take }: PaginationQueryDto) {
+    return this.prisma.user.findMany({
+      select: publicUserSelect,
+      orderBy: { id: 'asc' },
+      skip,
+      take,
     });
   }
 
-  async createUser(data) {
+  async getUser(id: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: publicUserSelect,
+    });
+    if (!user) throw new NotFoundException();
+    return user;
+  }
+
+  async createUser(data: CreateUserDto) {
+    const password = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
     return this.prisma.user.create({
-      data: {
-        email: data.email,
-        name: data.name,
-        password: data.password,
-      },
-    });
-  }
-
-  async updateUser(id, data) {
-    return this.prisma.user.update({
-      where: {
-        id,
-      },
-      data,
-    });
-  }
-
-  async deleteUser(id) {
-    return this.prisma.user.delete({
-      where: {
-        id,
-      },
-    });
-  }
-
-  async deleteAll() {
-    return this.prisma.user.deleteMany();
-  }
-
-  async getUserByEmail(email) {
-    return this.prisma.user.findUnique({
-      where: {
-        email,
-      },
+      data: { email: data.email, name: data.name, password },
+      select: publicUserSelect,
     });
   }
 }
