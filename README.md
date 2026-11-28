@@ -1,73 +1,88 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# postgresProject
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+User REST API built with [NestJS](https://nestjs.com/), Prisma and PostgreSQL. It supports listing users, fetching one user and signing up a new user. Started from the NestJS starter (originally with TypeORM) and refactored in 2026 to hash passwords, validate input and use a single Prisma connection pool.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech stack
 
-## Description
+- Node.js >= 22.12, TypeScript 6
+- NestJS 12 (`@nestjs/common`, `core`, `platform-express`, `config`)
+- Prisma 7 with `@prisma/adapter-pg` and `pg` 8, PostgreSQL
+- class-validator 0.15, class-transformer 0.5, bcrypt 6, helmet 8
+- Jest 30 and supertest 7 for tests, ESLint 10 (flat config), Prettier
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Features
 
-## Installation
+- Sign-up with bcrypt-hashed passwords (cost 12); password and email rules enforced by a global `ValidationPipe` (whitelist, reject unknown fields).
+- Responses never include the password (only `id`, `email`, `name`).
+- Paginated user list (`skip`, `take` up to 100, default 20).
+- Duplicate email returns `409`; unknown user returns `404`; non-numeric id returns `400`.
+- Helmet, CORS allow-list from `CORS_ORIGIN`, graceful shutdown hooks.
 
-```bash
-$ npm install
+## Project structure
+
+```
+prisma/schema.prisma           User model (id, email, name, password)
+prisma.config.ts               Prisma 7 config (database URL)
+src/
+  main.ts, setup-app.ts        bootstrap, helmet, CORS, pipes, filters
+  app.module.ts
+  db/                          global PrismaModule / PrismaService
+  common/                      PrismaExceptionFilter (P2002 -> 409, P2025 -> 404)
+  user/                        controller, service, DTOs, unit tests
+  generated/                   generated Prisma client (gitignored)
+test/                        e2e config and spec
 ```
 
-## Running the app
+## Setup
+
+Prerequisites: Node.js >= 22.12 and a running PostgreSQL database.
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+cp .env.example .env
 ```
 
-## Test
+Environment variables (from `.env.example`; placeholders only):
+
+| Variable | Example |
+| --- | --- |
+| `DATABASE_URL` | `postgresql://USER:PASSWORD@localhost:5432/postgres_project?schema=public` |
+| `DATABASE_POOL_MAX` | `10` |
+| `CORS_ORIGIN` | `http://localhost:4200` (comma-separated list) |
+| `PORT` | `3000` |
+
+No migration files are committed. Create the table from the schema with the Prisma CLI (for example `npx prisma db push`), or generate your own migrations and apply them with `npm run prisma:migrate`.
+
+## Run
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run build           # prisma generate + nest build
+npm run start:dev       # watch mode
+npm run start:prod      # node dist/main
 ```
 
-## Support
+`npm run start` and `npm run start:debug` also exist.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## API
 
-## Stay in touch
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/` | Hello message |
+| GET | `/user?skip=&take=` | List users (`skip` >= 0, `take` 1-100) |
+| GET | `/user/:id` | Get one user (`400` if id is not an integer, `404` if missing) |
+| POST | `/user` | Sign up. Body: `email` (valid, max 255), `name` (6-255 chars), `password` (8-72 chars) |
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Tests and lint
 
-## License
+```bash
+npm test                # unit tests (UserService)
+npm run test:cov        # with coverage
+npm run lint
+npm run test:e2e        # see note below
+```
 
-Nest is [MIT licensed](LICENSE).
+## Notes and known limitations
+
+- `test/app.e2e-spec.ts` is still the starter spec (`GET /` returns "Hello World!"), needs a reachable database, and does not cover the user endpoints.
+- There is no authentication or login endpoint, only user creation and read.
+- Any account created before the refactor may still have a plaintext password stored; the old schema had a default password.
